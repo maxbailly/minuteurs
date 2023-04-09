@@ -2,7 +2,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use timings::Timer;
+use minuteurs::Timer;
 
 /* ---------- */
 

@@ -1,6 +1,6 @@
 use std::time::{Duration, Instant};
 
-use timings::Timeout;
+use minuteurs::Timeout;
 
 /* ---------- */
 

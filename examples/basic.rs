@@ -1,6 +1,6 @@
 use std::time::{Duration, Instant};
 
-use timings::Timeout;
+use minuteurs::Timeout;
 
 fn main() {
     let mut timeout = Timeout::once(Duration::from_secs(1));

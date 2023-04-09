@@ -1,4 +1,4 @@
-# `timings`
+# `minuteurs`
 
 A very lightweight crate to give users control as fine grained as possible over threads' execution over time at a minimal cost.
 
@@ -16,7 +16,7 @@ It comes in two flavors:
 
 ```rust
 use std::time::{Duration, Instant};
-use timings::Timeout;
+use minuteurs::Timeout;
 
 // Create a new timeout of 1 second.
 let mut timeout = Timeout::once(Duration::from_secs(1));
@@ -44,7 +44,7 @@ elapsed: 1.00010838s
 
 ```rust
 use std::time::{Duration, Instant};
-use timings::Timeout;
+use minuteurs::Timeout;
 
 // Create a repeatable timeout of 1 second.
 let mut timeout = Timeout::repeat(Duration::from_secs(1));
@@ -99,7 +99,7 @@ Usually, the timer runs in a loop in its own thread, while the watchers are pass
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use timings::Timer;
+use minuteurs::Timer;
 
 // Create a timer that ticks every seconds and get a watcher from it.
 let mut timer = Timer::new(Duration::from_secs(1));
