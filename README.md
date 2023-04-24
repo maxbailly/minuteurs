@@ -161,4 +161,4 @@ thread1 ticked at 5.000875316s
 
 # License
 
-Licensed under the terms of MIT license. See [LICENSE-MIT](LICENSE-MIT) for details.
+Licensed under the terms of MIT license. See [LICENSE](LICENSE) for details.
