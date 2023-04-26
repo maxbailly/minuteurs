@@ -1,36 +1,40 @@
-//! The [`Timeout`] implementation.
+//! The [`Deadline`] implementation.
 
 use std::fmt::{Debug, Formatter, Result as FmtResult};
 use std::time::{Duration, Instant};
 
 /* ---------- */
 
-/// A timeout that can either be triggered once or multiple times.
+/// A deadline that can either be triggered once or multiple times.
 #[derive(Debug, Clone, Copy)]
-pub struct Timeout {
-    /// The kind of timeout.
-    kind: TimeoutKind,
+pub struct Deadline {
+    /// The kind of deadline.
+    kind: DeadlineKind,
 }
 
-impl Timeout {
-    /// Returns a new [`Timeout`] that will be triggered only once.
+impl Deadline {
+    /// Returns a new [`Deadline`] that will be triggered only once.
     #[inline]
     pub fn once(dur: Duration) -> Self {
-        Self { kind: TimeoutKind::once(dur) }
+        Self {
+            kind: DeadlineKind::once(dur),
+        }
     }
 
-    /// Returns a new [`Timeout`] timeout that can be periodically triggered.
+    /// Returns a new [`Deadline`] that can be periodically triggered.
     #[inline]
     pub fn repeat(dur: Duration) -> Self {
-        Self { kind: TimeoutKind::repeat(dur) }
+        Self {
+            kind: DeadlineKind::repeat(dur),
+        }
     }
 
-    /// Returns whether or not the [`Timeout`] expired.
+    /// Returns whether or not the [`Deadline`] expired.
     #[inline]
     pub fn expired(&mut self) -> bool {
         match &mut self.kind {
-            TimeoutKind::Once(timeout) => timeout.expired(),
-            TimeoutKind::Repeat(timeout) => timeout.expired(),
+            DeadlineKind::Once(deadline) => deadline.expired(),
+            DeadlineKind::Repeat(deadline) => deadline.expired(),
         }
     }
 
@@ -38,47 +42,47 @@ impl Timeout {
     #[inline]
     pub fn remaining_duration(&mut self) -> Duration {
         match &mut self.kind {
-            TimeoutKind::Once(timeout) => timeout.remaining_duration(),
-            TimeoutKind::Repeat(timeout) => timeout.remaining_duration(),
+            DeadlineKind::Once(deadline) => deadline.remaining_duration(),
+            DeadlineKind::Repeat(deadline) => deadline.remaining_duration(),
         }
     }
 
-    /// Block the thread until the [`Timeout`] expires.
+    /// Block the thread until the [`Deadline`] expires.
     #[inline]
     pub fn wait(&mut self) {
         match &mut self.kind {
-            TimeoutKind::Once(timeout) => timeout.wait(),
-            TimeoutKind::Repeat(timeout) => timeout.wait(),
+            DeadlineKind::Once(deadline) => deadline.wait(),
+            DeadlineKind::Repeat(deadline) => deadline.wait(),
         }
     }
 }
 
 /* ---------- */
 
-/// Defines the various kind of timeouts.
+/// Defines the various kind of deadlines.
 #[derive(Clone, Copy)]
-enum TimeoutKind {
-    /// The variant of the timeout that can be triggered only once.
-    Once(TimeoutOnce),
-    /// The variant of the timeout that can be triggered repeatedly.
-    Repeat(TimeoutRepeat),
+enum DeadlineKind {
+    /// The variant of the deadline that can be triggered only once.
+    Once(DeadlineOnce),
+    /// The variant of the deadline that can be triggered repeatedly.
+    Repeat(DeadlineRepeat),
 }
 
-impl TimeoutKind {
-    /// Returns a timeout that can be triggered only once.
+impl DeadlineKind {
+    /// Returns a deadline that can be triggered only once.
     #[inline]
     fn once(dur: Duration) -> Self {
-        Self::Once(TimeoutOnce::new(dur))
+        Self::Once(DeadlineOnce::new(dur))
     }
 
-    /// Returns a timeout that can be triggered repeatedly.
+    /// Returns a deadline that can be triggered repeatedly.
     #[inline]
     fn repeat(dur: Duration) -> Self {
-        Self::Repeat(TimeoutRepeat::new(dur))
+        Self::Repeat(DeadlineRepeat::new(dur))
     }
 }
 
-impl Debug for TimeoutKind {
+impl Debug for DeadlineKind {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {
             Self::Once(inner) => write!(f, "{inner:?}"),
@@ -89,24 +93,24 @@ impl Debug for TimeoutKind {
 
 /* ---------- */
 
-/// A timeout that is triggered only once.
+/// A deadline that is triggered only once.
 #[derive(Debug, Clone, Copy)]
-struct TimeoutOnce {
-    /// The time when the timeout is triggered.
+struct DeadlineOnce {
+    /// The time when the deadline is triggered.
     delivery_time: Instant,
 }
 
-impl TimeoutOnce {
-    /// Returns a new [`TimeoutOnce`] triggered after `dur` time.
+impl DeadlineOnce {
+    /// Returns a new [`DeadlineOnce`] triggered after `dur` time.
     #[inline]
     fn new(dur: Duration) -> Self {
         let delivery_time = checked_delivery_time(Instant::now(), dur);
         Self { delivery_time }
     }
 
-    /// Returns whether or not the timeout expired.
+    /// Returns whether or not the deadline expired.
     ///
-    /// Once the timeout expires, it always returns true.
+    /// Once the deadline expires, it always returns true.
     #[inline]
     fn expired(&self) -> bool {
         self.remaining_duration() == Duration::ZERO
@@ -114,13 +118,13 @@ impl TimeoutOnce {
 
     /// Returns the time before the next trigger.
     ///
-    /// Once the timeout expires, it always returns [`Duration::ZERO`].
+    /// Once the deadline expires, it always returns [`Duration::ZERO`].
     #[inline]
     fn remaining_duration(&self) -> Duration {
         self.delivery_time - Instant::now()
     }
 
-    /// Waits until the timeout expires.
+    /// Waits until the deadline expires.
     #[inline]
     fn wait(&self) {
         std::thread::sleep(self.remaining_duration())
@@ -129,24 +133,24 @@ impl TimeoutOnce {
 
 /* ---------- */
 
-/// A timeout that can be periodically triggered.
+/// A deadline that can be periodically triggered.
 #[derive(Debug, Clone, Copy)]
-struct TimeoutRepeat {
+struct DeadlineRepeat {
     /// The period bewteen each trigger.
     dur: Duration,
-    /// The time when the timeout is triggered.
+    /// The time when the deadline is triggered.
     delivery_time: Instant,
 }
 
-impl TimeoutRepeat {
-    /// Returns a new [`TimeoutRepeat`] triggered after `dur` time.
+impl DeadlineRepeat {
+    /// Returns a new [`DeadlineRepeat`] triggered after `dur` time.
     #[inline]
     fn new(dur: Duration) -> Self {
         let delivery_time = checked_delivery_time(Instant::now(), dur);
         Self { dur, delivery_time }
     }
 
-    /// Returns whether or not the timeout expired.
+    /// Returns whether or not the deadline expired.
     #[inline]
     fn expired(&mut self) -> bool {
         self.remaining_duration() == Duration::ZERO
@@ -164,7 +168,7 @@ impl TimeoutRepeat {
         ret
     }
 
-    /// Waits until the timeout expires.
+    /// Waits until the deadline expires.
     #[inline]
     fn wait(&mut self) {
         std::thread::sleep(self.remaining_duration());
@@ -205,94 +209,94 @@ mod tests {
 
     #[test]
     fn once_expired() {
-        let mut timeout = Timeout::once(Duration::from_millis(100));
+        let mut deadline = Deadline::once(Duration::from_millis(100));
 
-        assert!(!timeout.expired());
+        assert!(!deadline.expired());
 
         std::thread::sleep(Duration::from_millis(110));
-        assert!(timeout.expired());
-        assert!(timeout.expired());
+        assert!(deadline.expired());
+        assert!(deadline.expired());
     }
 
     #[test]
     fn once_remains() {
-        let mut timeout = Timeout::once(Duration::from_millis(100));
-        assert!(timeout.remaining_duration() > Duration::ZERO);
-        assert!(timeout.remaining_duration() < Duration::from_millis(100));
+        let mut deadline = Deadline::once(Duration::from_millis(100));
+        assert!(deadline.remaining_duration() > Duration::ZERO);
+        assert!(deadline.remaining_duration() < Duration::from_millis(100));
 
         std::thread::sleep(Duration::from_millis(50));
-        assert!(timeout.remaining_duration() > Duration::ZERO);
-        assert!(timeout.remaining_duration() < Duration::from_millis(50));
+        assert!(deadline.remaining_duration() > Duration::ZERO);
+        assert!(deadline.remaining_duration() < Duration::from_millis(50));
 
         std::thread::sleep(Duration::from_millis(51));
-        assert!(timeout.remaining_duration() == Duration::ZERO);
-        assert!(timeout.remaining_duration() == Duration::ZERO);
+        assert!(deadline.remaining_duration() == Duration::ZERO);
+        assert!(deadline.remaining_duration() == Duration::ZERO);
     }
 
     #[test]
     fn once_wait() {
-        let mut timeout = Timeout::once(Duration::from_millis(100));
+        let mut deadline = Deadline::once(Duration::from_millis(100));
         let now = Instant::now();
-        timeout.wait();
+        deadline.wait();
         assert!(now.elapsed() >= Duration::from_millis(100));
 
-        let mut timeout = Timeout::once(Duration::from_millis(100));
+        let mut deadline = Deadline::once(Duration::from_millis(100));
         let now = Instant::now();
         std::thread::sleep(Duration::from_millis(50));
-        timeout.wait();
+        deadline.wait();
         let delay = now.elapsed();
         assert!(delay >= Duration::from_millis(100));
         assert!(delay < Duration::from_millis(110));
 
         let now = Instant::now();
-        timeout.wait();
+        deadline.wait();
         let delay = now.elapsed();
         assert!(delay < Duration::from_millis(1));
     }
 
     #[test]
     fn repeat_expired() {
-        let mut timeout = Timeout::repeat(Duration::from_millis(100));
+        let mut deadline = Deadline::repeat(Duration::from_millis(100));
 
-        assert!(!timeout.expired());
+        assert!(!deadline.expired());
 
         std::thread::sleep(Duration::from_millis(110));
-        assert!(timeout.expired());
-        assert!(!timeout.expired());
+        assert!(deadline.expired());
+        assert!(!deadline.expired());
     }
 
     #[test]
     fn repeat_remains() {
-        let mut timeout = Timeout::repeat(Duration::from_millis(100));
-        assert!(timeout.remaining_duration() > Duration::ZERO);
-        assert!(timeout.remaining_duration() < Duration::from_millis(100));
+        let mut deadline = Deadline::repeat(Duration::from_millis(100));
+        assert!(deadline.remaining_duration() > Duration::ZERO);
+        assert!(deadline.remaining_duration() < Duration::from_millis(100));
 
         std::thread::sleep(Duration::from_millis(50));
-        assert!(timeout.remaining_duration() > Duration::ZERO);
-        assert!(timeout.remaining_duration() < Duration::from_millis(50));
+        assert!(deadline.remaining_duration() > Duration::ZERO);
+        assert!(deadline.remaining_duration() < Duration::from_millis(50));
 
         std::thread::sleep(Duration::from_millis(51));
-        assert!(timeout.remaining_duration() == Duration::ZERO);
-        assert!(timeout.remaining_duration() < Duration::from_millis(100));
+        assert!(deadline.remaining_duration() == Duration::ZERO);
+        assert!(deadline.remaining_duration() < Duration::from_millis(100));
     }
 
     #[test]
     fn repeat_wait() {
-        let mut timeout = Timeout::repeat(Duration::from_millis(100));
+        let mut deadline = Deadline::repeat(Duration::from_millis(100));
         let now = Instant::now();
-        timeout.wait();
+        deadline.wait();
         assert!(now.elapsed() >= Duration::from_millis(100));
 
-        let mut timeout = Timeout::repeat(Duration::from_millis(100));
+        let mut deadline = Deadline::repeat(Duration::from_millis(100));
         let now = Instant::now();
         std::thread::sleep(Duration::from_millis(50));
-        timeout.wait();
+        deadline.wait();
         let delay = now.elapsed();
         assert!(delay >= Duration::from_millis(100));
         assert!(delay < Duration::from_millis(110));
 
         let now = Instant::now();
-        timeout.wait();
+        deadline.wait();
         let delay = now.elapsed();
         assert!(delay >= Duration::from_millis(90), "delay = {:?}", delay);
     }

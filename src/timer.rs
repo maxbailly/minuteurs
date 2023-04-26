@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::Timeout;
+use crate::Deadline;
 
 /* ---------- */
 
@@ -17,14 +17,17 @@ pub struct Timer {
     /// The inner state of the timer, toggle on each ticks.
     state: State,
 
-    /// The timeout used to trigger the timer's ticks.
-    timeout: Timeout,
+    /// The deadline used to trigger the timer's ticks.
+    deadline: Deadline,
 }
 
 impl Timer {
     /// Returns a new timer that ticks every `delay`.
     pub fn new(delay: Duration) -> Self {
-        Self { state: State::new(), timeout: Timeout::repeat(delay) }
+        Self {
+            state: State::new(),
+            deadline: Deadline::repeat(delay),
+        }
     }
 
     /// Returns a new watcher associated to `self`.
@@ -34,7 +37,7 @@ impl Timer {
 
     /// Blocks the current thread until the next tick and notify the associated watchers.
     pub fn tick(&mut self) {
-        self.timeout.wait();
+        self.deadline.wait();
         self.state.toggle();
     }
 }
@@ -155,7 +158,10 @@ mod timer {
             timer.tick();
 
             let elapsed = now.elapsed();
-            assert!(now.elapsed() >= Duration::from_millis(100 * count), "elapsed = {elapsed:?}")
+            assert!(
+                now.elapsed() >= Duration::from_millis(100 * count),
+                "elapsed = {elapsed:?}"
+            )
         }
     }
 }
@@ -171,11 +177,17 @@ mod watcher {
         let mut timer = Timer::new(Duration::from_millis(100));
         let mut watcher = timer.watcher();
 
-        assert!(!watcher.has_ticked(), "watcher shouldn't have been notified yet");
+        assert!(
+            !watcher.has_ticked(),
+            "watcher shouldn't have been notified yet"
+        );
 
         timer.tick();
         assert!(watcher.has_ticked(), "watcher should have been notified");
-        assert!(!watcher.has_ticked(), "watcher shouldn't have been notified instantly");
+        assert!(
+            !watcher.has_ticked(),
+            "watcher shouldn't have been notified instantly"
+        );
     }
 
     #[test]
@@ -183,17 +195,29 @@ mod watcher {
         let mut timer = Timer::new(Duration::from_millis(100));
 
         let mut watcher = timer.watcher();
-        assert!(!watcher.has_ticked(), "watcher shouldn't have been notified yet");
+        assert!(
+            !watcher.has_ticked(),
+            "watcher shouldn't have been notified yet"
+        );
 
         let mut watcher_clone = watcher.clone();
-        assert!(!watcher_clone.has_ticked(), "watcher clone shouldn't have been notified yet");
+        assert!(
+            !watcher_clone.has_ticked(),
+            "watcher clone shouldn't have been notified yet"
+        );
 
         timer.tick();
         assert!(watcher.has_ticked(), "watcher should have been notified");
-        assert!(watcher_clone.has_ticked(), "watcher clone should have been notified");
+        assert!(
+            watcher_clone.has_ticked(),
+            "watcher clone should have been notified"
+        );
 
         let mut watcher_clone = watcher.clone();
-        assert!(!watcher_clone.has_ticked(), "2dn watcher clone shouldn't have been notified yet");
+        assert!(
+            !watcher_clone.has_ticked(),
+            "2dn watcher clone shouldn't have been notified yet"
+        );
     }
 
     #[test]
@@ -229,6 +253,9 @@ mod watcher {
 
         stop.store(true, Ordering::SeqCst);
         let test_result = watcher_thread.join().unwrap();
-        assert_eq!(test_result, None, "watcher detected a tick before the expected time");
+        assert_eq!(
+            test_result, None,
+            "watcher detected a tick before the expected time"
+        );
     }
 }

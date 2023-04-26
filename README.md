@@ -2,13 +2,13 @@
 
 A very lightweight crate to give users control as fine grained as possible over threads' execution over time at a minimal cost.
 
-# Timeouts
+# Deadlines
 
-A `Timeout` allow users to block a thread's execution until a certain amount of time passed since the creation of the timeout unless the timeout already expired.
+A `Deadline` allow users to block a thread's execution until a certain amount of time passed since the creation of the deadline unless the deadline already expired.
 
 It comes in two flavors:
-* `Timeout::once()` returns a `Timeout` that can be triggered only once meaning that once such a timeout expires, it can never block anymore.
-* `Timeout::repeat()` returns a `Timeout` that can be triggered multiple times with the timeout duration. In this case, if too much time have passed between two `Timeout::wait()` calls, it will try to catch up.
+* `Deadline::once()` returns a `Deadline` that can be triggered only once meaning that once such a deadline expires, it can never block anymore.
+* `Deadline::repeat()` returns a `Deadline` that can be triggered multiple times. In this case, if too much time have passed between two `Deadline::wait()` calls, it will try to catch up.
 
 ## Examples
 
@@ -16,17 +16,17 @@ It comes in two flavors:
 
 ```rust
 use std::time::{Duration, Instant};
-use minuteurs::Timeout;
+use minuteurs::Deadline;
 
-// Create a new timeout of 1 second.
-let mut timeout = Timeout::once(Duration::from_secs(1));
+// Create a new deadline of 1 second.
+let mut deadline = Deadline::once(Duration::from_secs(1));
 let mut now = Instant::now();
 
 // This sleep represents some heavy computation.
 std::thread::sleep(Duration::from_millis(750));
 
-// Blocks the thread if less than 1 second have passed since the timemout's creation.
-timeout.wait();
+// Blocks the thread if less than 1 second have passed since the deadline's creation.
+deadline.wait();
 
 // Until this point, at least 1 second have passed no matter what happened
 // between the creation and the wait.
@@ -40,28 +40,28 @@ Possible output:
 elapsed: 1.00010838s
 ```
 
-### Using a timeout to synchronize multiple threads
+### Using a deadline to synchronize multiple threads
 
 ```rust
 use std::time::{Duration, Instant};
-use minuteurs::Timeout;
+use minuteurs::Deadline;
 
-// Create a repeatable timeout of 1 second.
-let mut timeout = Timeout::repeat(Duration::from_secs(1));
+// Create a repeatable deadline of 1 second.
+let mut deadline = Deadline::repeat(Duration::from_secs(1));
 let now = Instant::now();
 
-// Spawn two threads with the same timeout.
+// Spawn two threads with the same deadline.
 // They should prints approximatively every 1s.
 let thread1 = std::thread::spawn(move || {
     for _ in 0..5 {
-        timeout.wait();
+        deadline.wait();
         let elapsed = now.elapsed();
         println!("thread1 ticked at {elapsed:?}",)
     }
 });
 let thread2 = std::thread::spawn(move || {
     for _ in 0..5 {
-        timeout.wait();
+        deadline.wait();
         let elapsed = now.elapsed();
         println!("thread2 ticked at {elapsed:?}",)
     }
@@ -88,7 +88,7 @@ thread1 ticked at 5.000112471s
 
 # Timer
 
-A `Timer` differs from a repeatable `Timeout` in that a timer is specifically build to synchronize multiple threads on periodic events and are more precise and better optimized.
+A `Timer` differs from a repeatable `Deadline` in that a timer is specifically build to synchronize multiple threads on periodic events and are more precise and better optimized.
 
 Usually, the timer runs in a loop in its own thread, while the watchers are passed in another threads. The timer ticks periodically and notifies one or more watchers of the tick.
 
