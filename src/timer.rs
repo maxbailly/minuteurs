@@ -102,13 +102,13 @@ impl State {
     /// Flip the state's value.
     #[inline]
     fn toggle(&self) {
-        self.0.fetch_xor(true, Ordering::SeqCst);
+        self.0.fetch_xor(true, Ordering::Release);
     }
 
     /// Returns the state's inner value.
     #[inline]
     fn value(&self) -> bool {
-        self.0.load(Ordering::SeqCst)
+        self.0.load(Ordering::Acquire)
     }
 }
 
@@ -231,7 +231,7 @@ mod watcher {
         let watcher_thread = std::thread::spawn(move || {
             let mut loops = 1;
 
-            while !stop_clone.load(Ordering::SeqCst) {
+            while !stop_clone.load(Ordering::Acquire) {
                 if watcher.has_ticked() {
                     let elapsed = now.elapsed();
                     let expected = Duration::from_millis(100 * loops);
@@ -251,7 +251,7 @@ mod watcher {
             timer.tick();
         }
 
-        stop.store(true, Ordering::SeqCst);
+        stop.store(true, Ordering::Release);
         let test_result = watcher_thread.join().unwrap();
         assert_eq!(
             test_result, None,

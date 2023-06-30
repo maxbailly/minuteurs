@@ -1,6 +1,6 @@
 [package]
 name = "minuteurs"
-version = "1.0.0"
+version = "1.0.1"
 edition = "2021"
 authors = ["Maxime BAILLY <maxbailly@hotmail.fr>"]
 description = "A small crate to sync threads on periodic events"
